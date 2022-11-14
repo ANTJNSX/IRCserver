@@ -9,7 +9,8 @@ import java.util.ArrayList;
 public class ServerThread extends Thread {
     private Socket socket;
     public ArrayList<ServerThread> threadList;
-    public ArrayList<room> rooms;
+    public ArrayList<room> rooms = new ArrayList<room>();
+
     private PrintWriter output;
 
     public ServerThread(Socket socket, ArrayList<ServerThread> threads) {
@@ -20,7 +21,9 @@ public class ServerThread extends Thread {
 
     @Override
     public void run() {
-
+        room Room = new room("Main",null);
+        rooms.add(Room);
+        Room.addClient(this);
         try {
             //Reading the input from Client
             BufferedReader input = new BufferedReader( new InputStreamReader(socket.getInputStream()));
@@ -36,9 +39,9 @@ public class ServerThread extends Thread {
                     "| |/ |/ /  __/ / /__/ /_/ / / / / / /  __/\n" +
                     "|__/|__/\\___/_/\\___/\\____/_/ /_/ /_/\\___/");
 
-
-            room Room = new room("Main",null,this);
-
+            //Adds the client to main room
+            Room.addClient(this);
+            room newRoom = null;
 
             boolean activeThread = true;
             //Infinite loop for server
@@ -52,6 +55,7 @@ public class ServerThread extends Thread {
                  * else output to the rest of the users
                  *
                  * /JOIN
+                 * /CREATE
                  * /WHO  x
                  * /NICK x
                  * /QUIT x
@@ -59,20 +63,49 @@ public class ServerThread extends Thread {
                  *
                  */
 
+                System.out.println(rooms.size());
+
                 // [COMMAND] /join
                 // join a specific room
-
-
                 boolean roomNameTaken = false;
+                String currentRoom;
                 if(cmdStr[0].equals("/JOIN")) {
                     try {
-                        // Check if there is a room with the same name
-                        System.out.print(Room.getClient(0));
-
+                        currentRoom = Room.name;
+                        // Find the old room and leave it
+                        for (room crntRoom: rooms){
+                            if (crntRoom.getName().equals(currentRoom)){
+                                crntRoom.removeClient(this);
+                            }
+                        }
+                        // Find the new room and join it
+                        for (room crntRoom: rooms) {
+                            if (crntRoom.getName().equals(cmdStr[1]))
+                                crntRoom.addClient(this);
+                        }
                     }catch (Exception e){
                         this.output.println(e.getLocalizedMessage());
                     }
+                }
 
+
+                                                //DOESNT WORK
+                // [COMMAND] /CREATE
+                // Create a new room
+                else if (cmdStr[0].equals("/CREATE")){
+                    for (room thisRoom: rooms){
+                        // If room name isn't taken, create room
+                        if (!thisRoom.name.equals(cmdStr[1])){
+                            try {
+                                newRoom = new room(cmdStr[1], null);
+                                rooms.add(newRoom);
+                            }catch (Exception e ){
+                                this.output.println(e.getLocalizedMessage());
+                            }
+                            this.output.println(newRoom);
+                            this.output.println(newRoom.name);
+                        }
+                    }
                 }
 
 
@@ -100,7 +133,10 @@ public class ServerThread extends Thread {
                 else if (cmdStr[0].equals("/LIST")){
                     for( ServerThread sT: threadList) {
                         output.println(sT.getName() + '\t' + sT.socket.getLocalAddress());
+                    }
 
+                    for (room crntRoom: rooms){
+                        this.output.println(crntRoom.getName());
                     }
                 }
 
@@ -134,11 +170,20 @@ public class ServerThread extends Thread {
         }
     }
 
+    //prints twice for some odd reason
     private void printToALlClients(String outputString, String[] cmdStr) {
         try {
-            for( ServerThread sT: threadList) {
-                sT.output.println(outputString);
+            for (room currentRoom: rooms){
+                for (ServerThread roomCli: currentRoom.clientList){
+                    if (roomCli.getName().equals(this.getName())){
+                        for (ServerThread sT: threadList){
+                            if (!sT.getName().equals(this.getName()))
+                                sT.output.println(outputString);
+                        }
+                    }
+                }
             }
+
         }catch (Exception e){
             output.println(e.getLocalizedMessage());
         }

@@ -1,5 +1,3 @@
-import java.net.ServerSocket;
-import java.util.ArrayList;
 import java.util.*;
 
 public class room {
@@ -12,14 +10,13 @@ public class room {
      */
     String name;
     String[] messages;
-    List<ServerThread> client;
+    ArrayList<ServerThread> clientList = new ArrayList<ServerThread>();
 
     // Constructor Declaration of Class
-    public room(String name, String[] messages, ServerThread client)
+    public room(String name, String[] messages)
     {
         this.name = name;
         this.messages = messages;
-        this.client.add(client);
     }
 
     // method 1
@@ -35,9 +32,19 @@ public class room {
     }
 
     // method 3
-    public ServerThread getClient(int x)
+    public int getClient()
     {
-        return client.get(x);
+        return clientList.size();
+    }
+
+    public void addClient(ServerThread client)
+    {
+        clientList.add(client);
+    }
+
+    public void removeClient(ServerThread client)
+    {
+        clientList.remove(client);
     }
 
 }
