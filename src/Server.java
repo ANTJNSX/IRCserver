@@ -10,11 +10,13 @@ public class Server {
 
         //list to add all the clients thread
         ArrayList<ServerThread> threadList = new ArrayList<>();
-        try (ServerSocket serversocket = new ServerSocket(5000)){
-            while(true) {
+        ArrayList<room> roomList = new ArrayList<>();
+        try (ServerSocket serversocket = new ServerSocket(5000)) {
+            while (true) {
+                room ServerRoom = null;
                 Socket socket = serversocket.accept();
                 System.out.println("Client Connected");
-                ServerThread serverThread = new ServerThread(socket, threadList);
+                ServerThread serverThread = new ServerThread(socket, threadList, ServerRoom, roomList);
                 //starting the thread
                 threadList.add(serverThread);
 

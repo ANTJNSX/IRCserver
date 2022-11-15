@@ -1,29 +1,25 @@
-import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
 public class ServerThread extends Thread {
     private Socket socket;
     public ArrayList<ServerThread> threadList;
-    public ArrayList<room> rooms = new ArrayList<room>();
-
+    public ArrayList<room> roomList;
     private PrintWriter output;
-
-    public ServerThread(Socket socket, ArrayList<ServerThread> threads) {
+    room currentRoom = null;
+    public ServerThread(Socket socket, ArrayList<ServerThread> threads, room currentRoom, ArrayList<room> roomList) {
         this.setName("anon");
         this.socket = socket;
         this.threadList = threads;
+        this.roomList = roomList;
     }
 
     @Override
     public void run() {
-        room Room = new room("Main",null);
-        rooms.add(Room);
-        Room.addClient(this);
+
         try {
             //Reading the input from Client
             BufferedReader input = new BufferedReader( new InputStreamReader(socket.getInputStream()));
@@ -39,9 +35,6 @@ public class ServerThread extends Thread {
                     "| |/ |/ /  __/ / /__/ /_/ / / / / / /  __/\n" +
                     "|__/|__/\\___/_/\\___/\\____/_/ /_/ /_/\\___/");
 
-            //Adds the client to main room
-            Room.addClient(this);
-            room newRoom = null;
 
             boolean activeThread = true;
             //Infinite loop for server
@@ -54,16 +47,16 @@ public class ServerThread extends Thread {
                  * if output string = [Command] ex. /join
                  * else output to the rest of the users
                  *
-                 * /JOIN
-                 * /CREATE
-                 * /WHO  x
+                 * /JOIN x
+                 * /CREATE x
                  * /NICK x
                  * /QUIT x
                  * /LIST x
-                 *
+                 * /WHOIS
+                 * /WHO
+
                  */
 
-                System.out.println(rooms.size());
 
                 // [COMMAND] /join
                 // join a specific room
@@ -71,17 +64,11 @@ public class ServerThread extends Thread {
                 String currentRoom;
                 if(cmdStr[0].equals("/JOIN")) {
                     try {
-                        currentRoom = Room.name;
-                        // Find the old room and leave it
-                        for (room crntRoom: rooms){
-                            if (crntRoom.getName().equals(currentRoom)){
-                                crntRoom.removeClient(this);
-                            }
-                        }
-                        // Find the new room and join it
-                        for (room crntRoom: rooms) {
-                            if (crntRoom.getName().equals(cmdStr[1]))
+                        for (room crntRoom: roomList){
+                            if (crntRoom.name.equals(cmdStr[1])){
+                                this.currentRoom = crntRoom;
                                 crntRoom.addClient(this);
+                            }
                         }
                     }catch (Exception e){
                         this.output.println(e.getLocalizedMessage());
@@ -89,33 +76,47 @@ public class ServerThread extends Thread {
                 }
 
 
+
                                                 //DOESNT WORK
                 // [COMMAND] /CREATE
                 // Create a new room
                 else if (cmdStr[0].equals("/CREATE")){
-                    for (room thisRoom: rooms){
-                        // If room name isn't taken, create room
-                        if (!thisRoom.name.equals(cmdStr[1])){
-                            try {
-                                newRoom = new room(cmdStr[1], null);
-                                rooms.add(newRoom);
-                            }catch (Exception e ){
-                                this.output.println(e.getLocalizedMessage());
+                    try {
+                        boolean nameExists = false;
+                        for (room crntRoom: roomList){
+                            if (crntRoom.name.equals(cmdStr[1])){
+                                nameExists = true;
                             }
-                            this.output.println(newRoom);
-                            this.output.println(newRoom.name);
                         }
+                        // Checks if there is a room with the same name
+                        if (!nameExists){
+                            createRoom(cmdStr[1], null);
+                        }else {
+                            this.output.println("Room with that name already exists");
+                        }
+                    }catch (Exception e){
+                        this.output.println("Create Failed: " + e.getLocalizedMessage());
                     }
                 }
 
 
-                // [COMMAND] /WHO
+                // [COMMAND] /WHOIS
                 // get info about a user
-                else if(cmdStr[0].equals("/WHO")) {
+                else if(cmdStr[0].equals("/WHOIS")) {
                     String username = cmdStr[1];
                     for (ServerThread sT: threadList){
                         if(sT.getName().equals(username)){
-                            output.println(sT.getName() + '\t' + sT.socket.getLocalAddress() + '\t' + '\t' + sT.getState());
+                            output.println(sT.getName() + '\t' + sT.currentRoom +  '\t' + sT.socket.getLocalAddress());
+                        }
+                    }
+                }
+
+                // [COMMAND] /WHO
+                // get info clients in room
+                else if(cmdStr[0].equals("/WHO")) {
+                    for (ServerThread sT: threadList){
+                        if(sT.currentRoom.equals(this.currentRoom)){
+                            this.output.println(sT.getName() + '\t' + sT.socket.getLocalAddress());
                         }
                     }
                 }
@@ -129,15 +130,16 @@ public class ServerThread extends Thread {
                 }
 
                 // [COMMAND] /LIST
-                // print a list of all the current users
+                // print a list of all opened rooms
                 else if (cmdStr[0].equals("/LIST")){
-                    for( ServerThread sT: threadList) {
-                        output.println(sT.getName() + '\t' + sT.socket.getLocalAddress());
+                    // Prints a list of the rooms
+                    this.output.println("-----");
+                    this.output.println(roomList.size());
+                    for (room crntRoom: roomList){
+                        this.output.println(crntRoom.getName() + " " + crntRoom.clientList.size() + " Connected");
                     }
+                    this.output.println("-----");
 
-                    for (room crntRoom: rooms){
-                        this.output.println(crntRoom.getName());
-                    }
                 }
 
                 // [COMMAND] /QUIT
@@ -170,17 +172,27 @@ public class ServerThread extends Thread {
         }
     }
 
+    //Creates new room with passed variables
+    private void createRoom(String name, String[] messages){
+        try {
+            room newRoom = new room(name, messages);
+            roomList.add(newRoom);
+            newRoom.addClient(this);
+            this.currentRoom = newRoom;
+
+        }catch (Exception e){
+            this.output.println(e.getLocalizedMessage());
+        }
+    }
+
+
     //prints twice for some odd reason
     private void printToALlClients(String outputString, String[] cmdStr) {
         try {
-            for (room currentRoom: rooms){
-                for (ServerThread roomCli: currentRoom.clientList){
-                    if (roomCli.getName().equals(this.getName())){
-                        for (ServerThread sT: threadList){
-                            if (!sT.getName().equals(this.getName()))
-                                sT.output.println(outputString);
-                        }
-                    }
+            // Finds users that are in the same room
+            for (ServerThread sT: threadList){
+                if (sT.currentRoom.equals(this.currentRoom)){
+                    sT.output.println(outputString);
                 }
             }
 
