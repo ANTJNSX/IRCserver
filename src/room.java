@@ -9,14 +9,13 @@ public class room {
 
      */
     String name;
-    String[] messages;
+    ArrayList<String> messages = new ArrayList<>();
     ArrayList<ServerThread> clientList = new ArrayList<ServerThread>();
 
     // Constructor Declaration of Class
     public room(String name, String[] messages)
     {
         this.name = name;
-        this.messages = messages;
     }
 
 
@@ -27,9 +26,13 @@ public class room {
     }
 
     // method 2
-    public String[] getMessages()
+    public void getMessages(int x)
     {
-        return messages;
+        messages.get(x);
+    }
+
+    public void addMessage(String message){
+        messages.add(message);
     }
 
     // method 3
