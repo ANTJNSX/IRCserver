@@ -9,20 +9,28 @@ public class room {
 
      */
     String name;
+    String password;
     ArrayList<String> messages = new ArrayList<>();
     ArrayList<ServerThread> clientList = new ArrayList<ServerThread>();
 
     // Constructor Declaration of Class
-    public room(String name, String[] messages)
+    public room(String name, String[] messages, String password)
     {
         this.name = name;
+        this.password = password;
     }
 
 
-    // method 1
+    //gets name
     public String getName()
     {
         return name;
+    }
+
+    //gets password
+    public String getPassword()
+    {
+        return password;
     }
 
     // method 2

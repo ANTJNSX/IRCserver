@@ -43,7 +43,7 @@ public class ServerThread extends Thread {
             //Infinite loop for input/output between server and client
             while(activeThread) {
                 String inputString = input.readLine();
-                String[] cmdStr = inputString.split(" ", 2);
+                String[] cmdStr = inputString.split(" ", 3);
 
                 /*
                  * if output string = [Command] ex. /join
@@ -69,9 +69,12 @@ public class ServerThread extends Thread {
                     case "/join":
                         // [COMMAND] /join
                         // join a specific room
-                        try {
-                            join(cmdStr[1]);
+                        try{
+                            join(cmdStr[1], cmdStr[2]);
+                            System.out.println(cmdStr[1] + " " + cmdStr[2]);
                         }catch (Exception e){
+                            join(cmdStr[1], null);
+
                             System.out.println(e.getLocalizedMessage());
                         }
                         break;
@@ -80,15 +83,16 @@ public class ServerThread extends Thread {
                         // [COMMAND] /CREATE
                         // Create a new room
                         try {
-                            createRoom(cmdStr[1], null);
-                            join(cmdStr[1]);
+                            createRoom(cmdStr[1], null, cmdStr[2]);
                         }catch (Exception e){
+                            createRoom(cmdStr[1], null, null);
+
                             System.out.println(e.getLocalizedMessage());
                         }
                         break;
 
                     case "/nick":
-                        // [COMMANd] /NICK
+                        // [COMMAND] /NICK
                         // set your nickname for other users to see
                         try {
                             nick(cmdStr[1]);
@@ -162,7 +166,7 @@ public class ServerThread extends Thread {
         //Methods for all the commands
 
     //Creates new room with passed variables
-    private void createRoom(String name, String[] messages){
+    private void createRoom(String name, String[] messages, String password){
         try {
             boolean nameExists = false;
             for (room crntRoom: roomList){
@@ -170,16 +174,19 @@ public class ServerThread extends Thread {
                     nameExists = true;
                 }
             }
+
             // Checks if there is a room with the same name
             if (!nameExists){
                 try {
-                    room newRoom = new room(name, messages);
+                    room newRoom = new room(name, messages, password);
                     roomList.add(newRoom);
                     newRoom.addClient(this);
+                    join(name,password);
                     this.currentRoom = newRoom;
 
                 }catch (Exception e){
                     this.output.println(e.getLocalizedMessage());
+                    this.output.println(e.getMessage());
                 }
             }else {
                 this.output.println("Room with that name already exists");
@@ -190,28 +197,35 @@ public class ServerThread extends Thread {
     }
 
     //Client joins room with same name
-    public void join(String name){
+    public void join(String name, String password){
         try {
             for (room crntRoom: roomList){
                 if (crntRoom.name.equals(name)){
                     this.currentRoom = crntRoom;
-                    crntRoom.addClient(this);
+                    //checks password
+                    if (crntRoom.password == password || crntRoom.password == null){
 
-                    this.output.println("-----");
+                        crntRoom.addClient(this);
 
-                    for (String message: this.currentRoom.messages){
-                        this.output.println(message);
+                        this.output.println("-----");
+
+                        for (String message: this.currentRoom.messages){
+                            this.output.println(message);
+                        }
+
+                        //Send welcome message into room
+                        String joinMessage = "Welcome to " + this.currentRoom.getName() + " " + this.getName() + "!";
+                        this.output.println(joinMessage);
+                    }else{
+                        this.output.println("Incorrect Password");
+                        this.output.println(crntRoom.password);
                     }
-
-                    //Send welcome message into room
-                    String joinMessage = "Welcome to " + this.currentRoom.getName() + " " + this.getName() + "!";
-                    this.output.println(joinMessage);
 
                 }else {
                     this.output.println("No room with that name");
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e){
             this.output.println(e.getLocalizedMessage());
         }
     }
@@ -276,7 +290,7 @@ public class ServerThread extends Thread {
         this.output.println("/list" + '\t' + "Prints a list of all the rooms");
         this.output.println("/whois []" + '\t' + "Gives information about user with given name");
         this.output.println("/who" + '\t' + "Prints a list of all the users connected to the server");
-        this.output.println("/help []" + '\n' + "Prints this help text");
+        this.output.println("/help []" + '\t' + "Prints this help text");
 
         this.output.println("-----END-----");
     }
