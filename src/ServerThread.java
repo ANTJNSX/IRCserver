@@ -1,20 +1,17 @@
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.List;
 
 public class ServerThread extends Thread {
     public boolean activeThread = true;
-    public String cliInput;
     private Socket socket;
     public ArrayList<ServerThread> threadList;
     public ArrayList<room> roomList;
     private PrintWriter output;
     room currentRoom = null;
-    public ServerThread(Socket socket, ArrayList<ServerThread> threads, room currentRoom, ArrayList<room> roomList) {
+    public ServerThread(Socket socket, ArrayList<ServerThread> threads, ArrayList<room> roomList) {
         this.setName("anon");
         this.socket = socket;
         this.threadList = threads;
@@ -142,6 +139,10 @@ public class ServerThread extends Thread {
                         activeThread = false;
                         break;
 
+                    case "/msg":
+                        msg(cmdStr[1], cmdStr[2]);
+                        break;
+
                     default:
                         //output to all clients
                         printToALlClients(this.getName() + " Said: " +inputString, cmdStr);
@@ -200,7 +201,7 @@ public class ServerThread extends Thread {
                 if (crntRoom.name.equals(name)){
                     this.currentRoom = crntRoom;
                     //checks password
-                    if (crntRoom.password.equals(password)){
+                    if (crntRoom.password == password){
 
                         crntRoom.addClient(this);
 
@@ -250,7 +251,6 @@ public class ServerThread extends Thread {
         output.println("Nytt nick: " + this.getName());
     }
 
-
     //Lists all the connected clients
     private void who(){
         try {
@@ -281,18 +281,29 @@ public class ServerThread extends Thread {
     public void help(){
         this.output.println("-----HELP-----");
         this.output.println("/JOIN []" + '\t' + "Join room with given name ");
-        this.output.println("/create []" + '\t' + "creates room with given name ");
+        this.output.println("/create [] [] []" + '\t' + "creates room with given name, password");
         this.output.println("/nick []" + '\t' + "Set the name that will show when you send messages, Default is Anon");
         this.output.println("/QUIT" + '\t' + "Quit the server");
         this.output.println("/list" + '\t' + "Prints a list of all the rooms");
         this.output.println("/whois []" + '\t' + "Gives information about user with given name");
         this.output.println("/who" + '\t' + "Prints a list of all the users connected to the server");
         this.output.println("/help []" + '\t' + "Prints this help text");
+        this.output.println("/msg [] []" + '\t' + "Send direct messages to someone, give persons name and then message");
 
         this.output.println("-----END-----");
     }
 
-    //prints twice for some odd reason
+    //Sends private message directly and only to the client mentioned
+    public void msg(String cliName, String dm){
+        for (ServerThread sT: threadList){
+            if (sT.getName().equals(cliName)){
+                sT.output.println(this.getName() + " whispered " + dm);
+                this.output.println(this.getName() + " whispered " + dm);
+
+            }
+        }
+    }
+
     private void printToALlClients(String outputString, String[] cmdStr) {
         try {
             // Finds users that are in the same room
