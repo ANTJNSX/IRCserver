@@ -69,13 +69,10 @@ public class ServerThread extends Thread {
                     case "/join":
                         // [COMMAND] /join
                         // join a specific room
-                        try{
-                            join(cmdStr[1], cmdStr[2]);
-                            System.out.println(cmdStr[1] + " " + cmdStr[2]);
-                        }catch (Exception e){
+                        if(cmdStr.length < 3){
                             join(cmdStr[1], null);
-
-                            System.out.println(e.getLocalizedMessage());
+                        }else{
+                            join(cmdStr[1], cmdStr[2]);
                         }
                         break;
 
@@ -203,7 +200,7 @@ public class ServerThread extends Thread {
                 if (crntRoom.name.equals(name)){
                     this.currentRoom = crntRoom;
                     //checks password
-                    if (crntRoom.password == password || crntRoom.password == null){
+                    if (crntRoom.password.equals(password)){
 
                         crntRoom.addClient(this);
 
